@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:customviews="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:splitMotionEvents="false" >
+
+    <RelativeLayout
+        android:id="@+id/relative"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:background="@drawable/popup"
+        android:splitMotionEvents="false" >
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="100dp"
+            android:orientation="vertical"
+            android:splitMotionEvents="false" >
+
+            <CheckBox
+                android:id="@+id/checkBox1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="2dp"
+                android:button="@null"
+                android:drawableRight="@drawable/checkbox_selector"
+                android:text="Airport Booking"
+                android:textColor="@color/black_color"
+                android:textSize="@dimen/past_trips_text_size" />
+
+            <CheckBox
+                android:id="@+id/checkBox2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="2dp"
+                android:button="@null"
+                android:drawableRight="@drawable/checkbox_selector"
+                android:text="Airport Rank"
+                android:textColor="@color/black_color"
+                android:textSize="@dimen/past_trips_text_size" />
+
+            <CheckBox
+                android:id="@+id/checkBox3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="2dp"
+                android:button="@null"
+                android:drawableRight="@drawable/checkbox_selector"
+                android:text="High Occupancy"
+                android:textColor="@color/black_color"
+                android:textSize="@dimen/past_trips_text_size" />
+
+            <LinearLayout
+                android:id="@+id/linear_toll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="2dp"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:orientation="horizontal" >
+
+                <TextView
+                    android:id="@+id/txt_view_toll"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Toll Rate $ "
+                    android:textColor="@color/black_color"
+                    android:textSize="@dimen/past_trips_text_size" />
+
+                <com.netcabs.customviews.NetCabsEditText
+                    android:id="@+id/edt_txt_toll"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:ems="6"
+                    android:gravity="right"
+                    android:hint="0.00"
+                    android:inputType="numberDecimal"
+                    android:maxLength="6"
+                    customviews:fontName="HELSH__.TTF" >
+                </com.netcabs.customviews.NetCabsEditText>
+            </LinearLayout>
+        </LinearLayout>
+    </RelativeLayout>
+
+    <Button
+        android:id="@+id/btn_ok"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/relative"
+        android:layout_centerHorizontal="true"
+        android:background="@drawable/ok_btn" />
+
+</RelativeLayout>

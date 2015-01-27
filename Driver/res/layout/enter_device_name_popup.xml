@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:customviews="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:splitMotionEvents="false" >
+
+    <RelativeLayout
+        android:id="@+id/relative"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:background="@drawable/popup"
+        android:splitMotionEvents="false" >
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="100dp"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:splitMotionEvents="false" >
+
+            <com.netcabs.customviews.NetCabsTextView
+                android:id="@+id/txt_view_msg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="10dp"
+                android:gravity="center_horizontal"
+                android:text="@string/enter_device_name_msg"
+                android:textColor="@color/black_color"
+                android:textSize="@dimen/popup_text_size"
+                customviews:fontName="HELSH__.TTF" />
+
+            <com.netcabs.customviews.NetCabsEditText
+                android:id="@+id/edt_txt_device_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ems="10"
+                android:gravity="left|center"
+                android:hint="Device Name"
+                android:inputType="textCapWords"
+                android:maxLength="10"
+                android:padding="5dp"
+                android:singleLine="true"
+                android:textSize="@dimen/text_size"
+                customviews:fontName="HELSH__.TTF" />
+        </LinearLayout>
+    </RelativeLayout>
+
+    <Button
+        android:id="@+id/btn_ok"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/relative"
+        android:layout_centerHorizontal="true"
+        android:background="@drawable/ok_btn" />
+
+</RelativeLayout>

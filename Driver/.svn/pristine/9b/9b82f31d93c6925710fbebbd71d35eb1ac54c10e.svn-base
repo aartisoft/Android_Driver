@@ -1,0 +1,75 @@
+package com.netcabs.asynctask;
+
+import android.app.Activity;
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.os.AsyncTask;
+
+import com.netcabs.interfacecallback.OnRequestComplete;
+import com.netcabs.jsonparser.CommunicationLayer;
+
+public class PaymentAsyncTask extends AsyncTask<String, Void, Void> {
+
+	private Context context;
+	private ProgressDialog progressDialog;
+	private OnRequestComplete callback;
+	private String responseStatus;
+
+	public PaymentAsyncTask(Context context, OnRequestComplete callback2) {
+		this.context = context;
+		this.callback = (OnRequestComplete) callback2;
+	}
+
+	@Override
+	protected void onPreExecute() {
+		super.onPreExecute();
+		progressDialog = ProgressDialog.show(context, "", "Loading...", true, false);
+	}
+
+	@Override
+	protected Void doInBackground(String... params) {
+		String func_id = params[0];
+		String taxi_id = params[1];
+		String driver_id = params[2];
+		String passenger_id = params[3];
+		String booking_id = params[4];
+		String price = params[5];
+		String fare_price = params[6];
+		String gst = params[7];
+		String extras = params[8];
+		String payment_method = params[9];
+		String date = params[10];
+		String time = params[11];
+		String cardNumber = params[12];
+		String cvvNumber = params[13];
+		String expiredDate = params[14];
+		String zipCode = params[15];
+		String cardType = params[16];
+		String countryId = params[17];
+		String cardHolderName = params[18];
+		
+		try {
+			responseStatus = CommunicationLayer.getPaymentData(func_id, taxi_id, driver_id, passenger_id, booking_id, price, fare_price, gst, extras, payment_method, date, time, cardNumber, cvvNumber, expiredDate, zipCode, cardType, countryId, cardHolderName);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
+
+	@Override
+	protected void onPostExecute(Void result) {
+		super.onPostExecute(result);
+		try {
+			if ((progressDialog != null) && progressDialog.isShowing()) {
+				progressDialog.dismiss();
+			}
+		} catch (final IllegalArgumentException e) {
+		} catch (final Exception e) {
+		} finally {
+			progressDialog = null;
+		}
+		callback.onRequestComplete(responseStatus);
+	}
+
+}

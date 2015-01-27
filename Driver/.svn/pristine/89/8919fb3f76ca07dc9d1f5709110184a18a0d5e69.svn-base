@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.netcabs.driver"
+    android:versionCode="1"
+    android:versionName="1.0" >
+
+    <supports-screens
+        android:anyDensity="true"
+        android:largeScreens="true"
+        android:normalScreens="true"
+        android:resizeable="true"
+        android:smallScreens="true"
+        android:xlargeScreens="true" />
+
+    <uses-sdk
+        android:minSdkVersion="14"
+        android:targetSdkVersion="18" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="com.google.android.providers.gsf.permission.READ_GSERVICES" />
+    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+    <uses-permission android:name="android.permission.USE_CREDENTIALS" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.GET_TASKS" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="com.google.android.c2dm.permission.RECEIVE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <uses-feature android:name="android.hardware.camera" />
+
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <uses-feature android:name="android.hardware.camera.autofocus" />
+
+    <permission
+        android:name="com.netcabs.driver.permission.C2D_MESSAGE"
+        android:protectionLevel="signature" />
+
+    <uses-permission android:name="com.netcabs.driver.permission.C2D_MESSAGE" />
+
+    <application
+        android:allowBackup="true"
+        android:icon="@drawable/app_icon"
+        android:label="@string/app_name"
+        android:splitMotionEvents="false"
+        android:theme="@android:style/Theme.Black.NoTitleBar" >
+        <activity
+            android:name="com.netcabs.driver.SplashScreenActivity"
+            android:label="@string/app_name"
+            android:screenOrientation="sensorLandscape" >
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name="com.netcabs.driver.LoginActivity"
+            android:label="@string/title_activity_login"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.netcabs.driver.MainMenuActivity"
+            android:label="@string/title_activity_main_menu"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.netcabs.driver.MainMapActivity"
+            android:label="@string/title_activity_main_map"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.netcabs.driver.StartFareActivity"
+            android:label="@string/title_activity_start_fare"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.netcabs.driver.SettingsActivity"
+            android:label="@string/title_activity_settings"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.netcabs.driver.SupportActivity"
+            android:label="@string/title_activity_support"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.netcabs.driver.FastTripsActivity"
+            android:label="@string/title_activity_fast_trips"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.netcabs.driver.CalculatorActivity"
+            android:label="@string/title_activity_calculator"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.netcabs.driver.PaymentTypeActivity"
+            android:label="@string/title_activity_payment_type"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.netcabs.driver.PaymentConfirmActivity"
+            android:label="@string/title_activity_payment_confirm"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.netcabs.driver.FAQActivity"
+            android:label="@string/title_activity_faq"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
+        <meta-data
+            android:name="com.google.android.maps.v2.API_KEY"
+            android:value="AIzaSyBX6OT8by3nCqrbaPwwyRTk8_nVx-z3-Bk" />
+
+        <activity
+            android:name="com.netcabs.driver.PastTripDetailsActivity"
+            android:label="@string/title_activity_fast_trip_details"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.netcabs.driver.StartOrEndTripActivity"
+            android:label="@string/title_activity_start_or_end_trip"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.netcabs.driver.SupportDetailsActivity"
+            android:label="@string/title_activity_support_details"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.netcabs.driver.SearchAddressLocaion"
+            android:label="@string/title_activity_search_address_locaion"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.netcabs.customviews.CustomAutoCompleteView"
+            android:label="@string/title_activity_custom_auto_complete_view"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+
+        <!-- Start Device Config -->
+        <activity
+            android:name="com.ingenico.pcltestappwithlib.WelcomeActivity"
+            android:label="@string/input_simul"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.ingenico.pcltestappwithlib.InputSimulActivity"
+            android:label="@string/input_simul"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.ingenico.pcltestappwithlib.PclLoopTestActivity"
+            android:label="@string/loop_test"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.ingenico.pcltestappwithlib.PclBarcodeActivity"
+            android:label="@string/barcode_test"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.ingenico.pcltestappwithlib.TestListActivity"
+            android:label="@string/title_activity_test_list" >
+        </activity>
+        <activity
+            android:name="com.ingenico.pcltestappwithlib.DetailedTestListActivity"
+            android:label="@string/title_activity_detailed_test_list" >
+        </activity>
+        <activity
+            android:name="com.ingenico.pcltestappwithlib.TestActivity"
+            android:configChanges="orientation"
+            android:label="@string/title_activity_test" >
+        </activity>
+        <activity
+            android:name="com.ingenico.pcltestappwithlib.CaptureSignature"
+            android:excludeFromRecents="true"
+            android:label="Signature Confirmation"
+            android:launchMode="singleTop"
+            android:theme="@android:style/Theme.Dialog" />
+        <activity
+            android:name="com.netcabs.driver.CalculateFareActivity"
+            android:label="@string/title_activity_calculate_fare"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+        <activity
+            android:name="com.netcabs.driver.DeviceListActivity"
+            android:label="Device list"
+            android:screenOrientation="sensorLandscape" >
+        </activity>
+
+        <receiver
+            android:name="com.netcabs.gcm.GcmBroadcastReceiver"
+            android:permission="com.google.android.c2dm.permission.SEND" >
+            <intent-filter>
+                <action android:name="com.google.android.c2dm.intent.RECEIVE" />
+                <action android:name="com.google.android.c2dm.intent.REGISTRATION" />
+
+                <category android:name="com.netcabs.driver" />
+            </intent-filter>
+        </receiver>
+		
+        <service android:name="com.ingenico.pclservice.PclService" />
+        <service android:name="com.ingenico.pclservice.BluetoothService" />
+        <service android:name="com.netcabs.gcm.GcmIntentService" />
+        <service android:name="com.netcabs.services.ServiceTaxiLocationUpdate" />
+        <service android:name="com.netcabs.services.SpeedGettingService" />
+        
+    </application>
+
+</manifest>

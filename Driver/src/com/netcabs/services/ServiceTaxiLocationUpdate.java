@@ -1,0 +1,262 @@
+package com.netcabs.services;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Locale;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import android.app.Activity;
+import android.app.ProgressDialog;
+import android.app.Service;
+import android.content.Intent;
+import android.location.Address;
+import android.location.Geocoder;
+import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Handler;
+import android.os.IBinder;
+import android.util.Log;
+
+import com.google.android.gms.maps.model.LatLng;
+import com.netcabs.interfacecallback.OnComplete;
+import com.netcabs.internetconnection.InternetConnectivity;
+import com.netcabs.jsonparser.CommunicationLayer;
+import com.netcabs.jsonparser.JSONParser;
+import com.netcabs.utils.DriverApp;
+import com.netcabs.utils.GPSTracker;
+
+public class ServiceTaxiLocationUpdate  extends Service {
+	int counter = 0;
+	int count = 0;
+	
+	private static final String TAG = "BroadcastService";
+	public static final String BROADCAST_ACTION = "com.netcabs.driver.SplashScreenActivity";
+	private final Handler handler = new Handler();
+	private Intent intent;
+	private LatLng current_taxi_latLng;
+	private Geocoder gcd;
+	private String geoAddress = "";
+	
+	@Override
+	public void onCreate() {
+		super.onCreate();
+    	intent = new Intent(BROADCAST_ACTION);
+    	gcd = new Geocoder(ServiceTaxiLocationUpdate.this, Locale.getDefault());
+	}
+	
+    @Override
+    public void onStart(Intent intent, int startId) {
+        handler.removeCallbacks(sendUpdatesToUI);
+        handler.postDelayed(sendUpdatesToUI, 1000); // 1 second
+   
+    }
+
+    private Runnable sendUpdatesToUI = new Runnable() {
+    	public void run() {
+
+    		if(InternetConnectivity.isConnectedToInternet(ServiceTaxiLocationUpdate.this)) {
+    			current_taxi_latLng = new LatLng(new GPSTracker(ServiceTaxiLocationUpdate.this).getLatitude(), new GPSTracker(ServiceTaxiLocationUpdate.this).getLongitude());
+    			//Log.i("SERVICE_UPDATE_TAXI", "***** " + current_taxi_latLng.latitude + ",,," + current_taxi_latLng.longitude);
+    		//	new GeoAddressAsyncTask(current_taxi_latLng.latitude,current_taxi_latLng.longitude).execute();
+	        	
+    			String urlTogetAddress = "http://maps.googleapis.com/maps/api/geocode/json?latlng="+ current_taxi_latLng.latitude + ","+ current_taxi_latLng.longitude + "&sensor=true";
+    			
+    			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+	        		//new GeoAddressAsyncTask(current_taxi_latLng.latitude,current_taxi_latLng.longitude).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+	        		new AddressByCoordinatesAsyncTask(urlTogetAddress).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+	        	} else {
+	        		//new GeoAddressAsyncTask(current_taxi_latLng.latitude, current_taxi_latLng.longitude).execute();
+	        		new AddressByCoordinatesAsyncTask(urlTogetAddress).execute();
+	        	}
+		
+    		} else {
+    			//new CustomToast(ServiceTaxiLocationUpdate.this, ConstantValues.internetConnectionMsg).showToast();
+    		}
+    	    handler.postDelayed(this, 10000); // 3 seconds
+    	}
+    };    
+
+	@Override
+	public IBinder onBind(Intent intent) {
+		return null;
+	}
+
+	@Override
+	public void onDestroy() {		
+        handler.removeCallbacks(sendUpdatesToUI);		
+		super.onDestroy();
+	}
+	
+	public class GetPostResult extends AsyncTask<Void, Void, Void> {
+		ProgressDialog dlog;
+		String getResponse= null;
+		
+		@Override
+		protected void onPreExecute() {
+			
+		}
+		
+		@Override
+		protected Void doInBackground(Void... arg0) {
+			try {
+				getResponse = CommunicationLayer.getTaxiLocationUpdate("1017", DriverApp.getInstance().getDriverInfo().getTaxiId(), Double.toString(current_taxi_latLng.latitude), Double.toString(current_taxi_latLng.longitude), geoAddress);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+			return null;
+		}
+
+		@Override
+		protected void onPostExecute(Void result) {
+			super.onPostExecute(result);
+			
+			try {
+				if (getResponse.equals("2001")) {
+					intent.putExtra("status", getResponse);
+			    	//sendBroadcast(intent);
+			    	Log.i("Response Taxi", "***" + getResponse);
+				} else {
+					
+				}
+			} catch (Exception e) {
+				Log.i("Print","Response Error" + e.getMessage());
+			}
+			
+		}
+	}
+	
+	private class GeoAddressAsyncTask extends AsyncTask<Void, Void, Void> {
+		double Lat, Lon;
+		List<Address> addresses = null;
+		public GeoAddressAsyncTask(double Lat, double Lon) {
+			this.Lat = Lat;
+			this.Lon = Lon;
+		}
+	
+		@Override
+		protected void onPreExecute() {
+			
+		}
+
+		@Override
+		protected Void doInBackground(Void... arg0) {
+			try {
+				addresses = gcd.getFromLocation(Lat, Lon, 1);
+			
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+			return null;
+		}
+
+		@Override
+		protected void onPostExecute(Void result) {
+			Log.i("Value found", "________________");
+			if (addresses != null) {
+				if (addresses.size() > 0) {
+					Log.i("Value found", "________________");
+					String address = addresses.get(0).getAddressLine(0) + ", " + addresses.get(0).getLocality() + ", " + addresses.get(0).getAdminArea();
+					String addressWithoutNullValue = address.replace("null", "");
+					Log.e("Address is 1", "" + addressWithoutNullValue);
+					geoAddress = addressWithoutNullValue.replace(", ,", ",");
+					if (geoAddress.length() > 0 && geoAddress.charAt(geoAddress.length()-1)==',') {
+						geoAddress = geoAddress.substring(0, geoAddress.length()-2);
+					}
+					Log.e("Address is 2", "" + geoAddress);
+					
+					//info.setLocationName(addresses.get(0).getAddressLine(0) + ", " + addresses.get(0).getSubLocality() + ", " + addresses.get(0).getAdminArea());
+				} else {
+					Log.i("Value is null", "______empty__________");
+				}
+			} else {
+				Log.i("Value is null", "________________");
+				
+			}
+			
+			new GetPostResult().execute();
+			
+		}
+		
+	}
+	
+	
+	public class AddressByCoordinatesAsyncTask extends AsyncTask<Void, Void, Void> {
+		private String url;
+		private JSONObject json;
+		private JSONArray dataArray = null;
+		private String taxiLocationAddress = "";
+		private ProgressDialog progressDialog;
+		private String address = "";
+		private boolean addComma = true;
+
+		public AddressByCoordinatesAsyncTask(String URL) {
+			this.url = URL;
+			
+		}
+
+		@Override
+		protected void onPreExecute() {
+			super.onPreExecute();
+		}
+
+		@Override
+		protected Void doInBackground(Void... params) {
+			JSONParser jParser = new JSONParser();
+			// getting JSON string from URL
+			json = jParser.getJSONFromUrl(url.toString());
+			Log.i("RESPONSE", "**" + json);
+			if (json != null) {
+				try {
+					// Getting Array of Contacts
+					dataArray = json.getJSONArray("results");
+					if(dataArray.length() > 0){
+						JSONObject dataObject = dataArray.getJSONObject(0);
+						JSONArray addressArray = dataObject .getJSONArray("address_components");
+						if(addressArray.length() > 0){
+							for(int i = 0; i < addressArray.length() - 1; i++) {
+								JSONObject addObj = addressArray.getJSONObject(i);
+								if (address.equalsIgnoreCase("")) {
+									address = addObj.getString("long_name");
+									if(address.matches("\\d+(\\-\\d+)?")){
+										addComma = false;
+									}
+								} else {
+									if(addComma) {
+										address = address + ", "+ addObj.getString("long_name");
+									} else {
+										addComma = true;
+										address = address + " "+ addObj.getString("long_name");
+									}
+									
+								}
+							}
+							
+							geoAddress = address;
+						}
+						
+					}
+				} catch (JSONException e) {
+					e.printStackTrace();
+					return null;
+				}
+			}
+			
+			return null;
+		}
+
+		@Override
+		protected void onPostExecute(Void result) {
+			try {
+				new GetPostResult().execute();
+			} catch (Exception e) {
+				
+			}
+			
+		}
+
+	}
+	
+}

@@ -1,0 +1,1016 @@
+package com.netcabs.driver;
+
+import java.util.ArrayList;
+
+import org.w3c.dom.Document;
+
+import android.app.Activity;
+import android.app.Dialog;
+import android.app.ProgressDialog;
+import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.Point;
+import android.location.Location;
+import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.CountDownTimer;
+import android.os.Handler;
+import android.os.SystemClock;
+import android.util.Log;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.WindowManager;
+import android.view.animation.Interpolator;
+import android.view.animation.LinearInterpolator;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.ImageButton;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.GoogleMap.OnMyLocationChangeListener;
+import com.google.android.gms.maps.MapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
+import com.netcabs.asynctask.BookingCancelAsyncTask;
+import com.netcabs.asynctask.BookingRejectAsyncTask;
+import com.netcabs.asynctask.BookingRequestAsyncTask;
+import com.netcabs.asynctask.CheckAvailabilityAsyncTask;
+import com.netcabs.asynctask.GetDurationAsyncTask;
+import com.netcabs.asynctask.TaxiArrivingAsyncTask;
+import com.netcabs.customviews.CustomLog;
+import com.netcabs.customviews.CustomToast;
+import com.netcabs.customviews.DialogController;
+import com.netcabs.interfacecallback.OnRequestComplete;
+import com.netcabs.internetconnection.InternetConnectivity;
+import com.netcabs.utils.ConstantValues;
+import com.netcabs.utils.DriverApp;
+import com.netcabs.utils.GMapV2GetRouteDirection;
+import com.netcabs.utils.GPSTracker;
+import com.netcabs.utils.Utils;
+
+public class MainMapActivity extends Activity implements OnClickListener, OnMyLocationChangeListener {
+
+	private GoogleMap map;
+	private RelativeLayout linearInfo;
+	private LinearLayout linearTimerInfo;
+	private LinearLayout linearLayoutTimer;
+	private Button btnLeft;
+	private Button btnright;
+	private ImageView imageView;
+	
+	private GMapV2GetRouteDirection routeDirection;
+	private Document doc;
+	private PolylineOptions rectLine;
+	private Polyline line;
+	private LatLng pick_up_latLng = null;
+	private int buttonTag = 0;
+	
+	private Button btnBack;
+	private TextView txtViewSourceToDestination;
+	private TextView txtViewPassengerCounts;
+	private TextView txtViewTimerCount;
+	private ImageButton imgBtnTrafficView;
+	private Handler handler = new Handler();
+	private Runnable runner;
+	
+	private int stage = 1;
+	private boolean isAccepted = false;
+	private String minute;
+	private String second;
+	private Marker currentPositionMarker;
+	private CountDownTimer countDownTimer;
+	private Dialog dialogDecline;
+	private boolean isShown = false;
+	public boolean isLock = false;
+	private boolean isFirstTime = true;
+	
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+		setContentView(R.layout.activity_main_map);
+		
+		initViews();
+		setListener();
+		initGoolgeMap();
+		loadData();
+		loadTimeBar();
+	}
+
+	private void initGoolgeMap() {
+		map = ((MapFragment) getFragmentManager().findFragmentById(R.id.map)).getMap();
+		final LatLng cur_Latlng = new LatLng(new GPSTracker(MainMapActivity.this).getLatitude(), new GPSTracker(MainMapActivity.this).getLongitude());
+		
+		if(map != null) {
+			map.moveCamera(CameraUpdateFactory.newLatLng(cur_Latlng));
+			map.animateCamera(CameraUpdateFactory.zoomTo(14.0f));
+			map.setMyLocationEnabled(true);
+			
+			//Set marker to current position
+			currentPositionMarker = map.addMarker(new MarkerOptions()
+					.title("My Current Position")
+					.position(cur_Latlng)
+					.flat(true)
+					.icon(BitmapDescriptorFactory.fromResource(R.drawable.location_icon)));
+			map.setOnMyLocationChangeListener(this);
+			if(ConstantValues.isTrafficViewEnabled){
+				map.setTrafficEnabled(true);
+			} else {
+				map.setTrafficEnabled(false);
+			}
+			
+			runner = new Runnable() {
+			    public void 
+			    run() {
+			        updateUI();
+			        handler.postDelayed(this, 5000);
+			    }
+			};
+
+			handler.postDelayed(runner, 5000);
+		
+			
+		} else {
+			new CustomLog(MainMapActivity.this, "MainMap", "Map is null").showLogI();
+		}
+	}
+
+	protected void updateUI() {
+		
+		if(!InternetConnectivity.isConnectedToInternet(MainMapActivity.this)) {
+			Toast.makeText(MainMapActivity.this, "Please check your internet connection", Toast.LENGTH_SHORT).show();
+			return;
+		} else {
+			
+		}
+		
+		new BookingRequestAsyncTask(MainMapActivity.this, new OnRequestComplete() {
+			
+			@Override
+			public void onRequestComplete(String result) {
+				try {
+					if ("2001".equals(result)) {
+						//handler.removeCallbacks(runner);
+						stage = 2;
+						if (isShown) {
+							return;
+						}
+						
+						isShown = true;
+						//DriverApp.getInstance().getBookingInfo().
+						//LatLng latLng;
+						btnBack.setVisibility(View.INVISIBLE);
+						linearInfo.setVisibility(View.VISIBLE);
+						linearTimerInfo.setVisibility(View.VISIBLE);
+						btnLeft.setBackgroundResource(R.drawable.accept_btn);
+						btnright.setBackgroundResource(R.drawable.decline_btn);
+						txtViewSourceToDestination.setText(DriverApp.getInstance().getBookingInfo().getPickupAddress() + " to " +DriverApp.getInstance().getBookingInfo().getDestinationAddress());
+						txtViewPassengerCounts.setText("" + DriverApp.getInstance().getBookingInfo().getPassengerNumber());
+						
+						LatLng current_taxi_latLng = new LatLng(new GPSTracker(MainMapActivity.this).getLatitude(), new GPSTracker(MainMapActivity.this).getLongitude());
+						//latLng = new LatLng(23.6198, 90.5647);
+						currentPositionMarker.setIcon(BitmapDescriptorFactory.fromResource(R.drawable.car_location_icon));
+						
+//						currentPositionMarker = map.addMarker(new MarkerOptions()
+//		        		.title("My current location")
+//		        		.position(current_taxi_latLng )
+//		        		.flat(true)
+//		        		.icon(BitmapDescriptorFactory.fromResource(R.drawable.car_location_icon)));
+						
+						//currentPositionMarker.setPosition(current_taxi_latLng);
+						
+						pick_up_latLng = new LatLng(DriverApp.getInstance().getBookingInfo().getPickupLat(), DriverApp.getInstance().getBookingInfo().getPickupLon());
+						map.addMarker(new MarkerOptions()
+		        		.title("" + DriverApp.getInstance().getBookingInfo().getPickupAddress())
+		        		.position(pick_up_latLng)
+		        		.flat(true)
+		        		.icon(BitmapDescriptorFactory.fromResource(R.drawable.pickup_add_icon)));
+						
+						LatLng destination_latLng = new LatLng(DriverApp.getInstance().getBookingInfo().getDestinationLat(), DriverApp.getInstance().getBookingInfo().getDestinationLon());
+						map.addMarker(new MarkerOptions()
+		        		.title("" + DriverApp.getInstance().getBookingInfo().getDestinationAddress())
+		        		.position(destination_latLng)
+		        		.flat(true)
+		        		.icon(BitmapDescriptorFactory.fromResource(R.drawable.distination_icon)));
+						
+						//handler.removeCallbacks(runner);
+						showTimer(1, 0);
+						
+						new GetDurationAsyncTask(MainMapActivity.this, current_taxi_latLng, pick_up_latLng,  new OnRequestComplete() {
+							@Override
+							public void onRequestComplete(String result) {
+								
+								try {
+									Log.e("Duration is:", "::::"+result);
+									String [] distanceDuration = result.split("//");
+									linearInfo.setVisibility(View.VISIBLE);
+									txtViewTimerCount.setText(Utils.getFormatedDuration(distanceDuration[1])+" away");
+									//DriverApp.getInstance().getBookingInfo().setDuration(Utils.getFormatedDuration(distanceDuration[1]));
+									//DriverApp.getInstance().getBookingInfo().setDistance(Utils.getFormatedDistance(distanceDuration[0]));	
+								} catch (Exception e) {
+									new CustomToast(getApplicationContext(), "Error " + e.getMessage()).showToast();
+									Log.i("Exception Main Map", "***" + e.getMessage());
+								}
+								
+								
+							}
+						}).execute();
+						
+					} else {
+						if (isShown) {
+							new CustomToast(getApplicationContext(), ConstantValues.bookingErrorMessage).showToast();
+							resetView();
+						}
+					}
+					
+				} catch (Exception e) {
+					new CustomToast(getApplicationContext(), "" + e.getMessage()).showToast();
+				}
+				
+			}
+		}).execute("1004", DriverApp.getInstance().getDriverInfo().getTaxiId());
+	}
+
+	private void initViews() {
+		isAccepted = false;
+		pick_up_latLng = null;
+		imgBtnTrafficView = (ImageButton) findViewById(R.id.img_btn_traffic);
+		if(ConstantValues.isTrafficViewEnabled){
+			imgBtnTrafficView.setBackgroundResource(R.drawable.ans_mark_over);
+		} else {
+			imgBtnTrafficView.setBackgroundResource(R.drawable.ans_mark);
+		}
+		routeDirection = new GMapV2GetRouteDirection();
+		linearInfo = (RelativeLayout) findViewById(R.id.linear_info);
+		linearTimerInfo = (LinearLayout) findViewById(R.id.upon_bottom);
+		linearLayoutTimer = (LinearLayout) findViewById(R.id.linear_timer);
+		
+		btnLeft = (Button) findViewById(R.id.btn_available);
+		btnright = (Button) findViewById(R.id.btn_unavailable);
+		btnBack = (Button) findViewById(R.id.btn_back);
+		
+		txtViewSourceToDestination = (TextView) findViewById(R.id.txt_view_source_to_destination);
+		txtViewPassengerCounts = (TextView) findViewById(R.id.txt_view_passenger_count);
+		txtViewTimerCount = (TextView) findViewById(R.id.txt_view_time_count);
+		
+	}
+
+	private void setListener() {
+		btnBack.setOnClickListener(this);
+		btnLeft.setOnClickListener(this);
+		btnright.setOnClickListener(this);
+		imgBtnTrafficView.setOnClickListener(this);
+	}
+
+	private void loadData() {
+		if(!InternetConnectivity.isConnectedToInternet(MainMapActivity.this)) {
+			new CustomToast(getApplicationContext(), ConstantValues.internetConnectionMsg).showToast();
+			return;
+		}
+		
+		new CheckAvailabilityAsyncTask(MainMapActivity.this, true,  new OnRequestComplete() {
+			@Override
+			public void onRequestComplete(String result) {
+				
+				try {
+					if("2001".equals(result)) {
+						buttonTag = 0;
+						btnLeft.setBackgroundResource(R.drawable.available_active);
+						btnright.setBackgroundResource(R.drawable.un_available_inactive);
+						handler.postDelayed(runner, 5000);
+					
+					} else {
+						new CustomToast(getApplicationContext(), "Data not found").showToast();
+					}
+					
+				} catch (Exception e) {
+					new CustomToast(getApplicationContext(), "Error " + e.getMessage()).showToast();
+					Log.i("Exception 1007", "***" + e.getMessage());
+				}
+			}
+			
+		}).execute("1003", DriverApp.getInstance().getDriverInfo().getTaxiId(), "1");
+		
+		
+	}
+	
+	private void loadTimeBar() {
+		for(int i = 0; i < ConstantValues.COUNTDOWN_TIMER_BAR; i++) {
+			imageView = new ImageView(MainMapActivity.this);
+			imageView.setId(i);
+			imageView.setBackgroundResource(R.drawable.time_bar_y);
+			LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+			lp.setMargins(3, 0, 0, 0);
+			imageView.setLayoutParams(lp);
+			linearLayoutTimer.addView(imageView);
+		}
+	}
+	
+	//on click 
+	@Override
+	public void onClick(View v) {
+		switch (v.getId()) {
+		case R.id.btn_back:
+			onBackPressed();
+			break;
+			
+		case R.id.img_btn_traffic:
+			if(ConstantValues.isTrafficViewEnabled){
+				ConstantValues.isTrafficViewEnabled = false;
+				map.setTrafficEnabled(false);
+				imgBtnTrafficView.setBackgroundResource(R.drawable.ans_mark);
+			} else {
+				ConstantValues.isTrafficViewEnabled = true;
+				map.setTrafficEnabled(true);
+				imgBtnTrafficView.setBackgroundResource(R.drawable.ans_mark_over);
+			}
+			break;
+
+		case R.id.btn_available:
+			switch (stage) {
+			case 1:
+				if (InternetConnectivity.isConnectedToInternet(MainMapActivity.this)) {
+					if (buttonTag != 0) {
+						new CheckAvailabilityAsyncTask(MainMapActivity.this, true, new OnRequestComplete() {
+								@Override
+								public void onRequestComplete(String result) {
+									
+									try {
+										if ("2001".equals(result)) {
+											buttonTag = 0;
+											btnLeft.setBackgroundResource(R.drawable.available_active);
+											btnright.setBackgroundResource(R.drawable.un_available_inactive);
+											handler.postDelayed(runner, 5000);
+
+										} else {
+											new CustomToast(getApplicationContext(), "Data not found") .showToast();
+										}	
+									} catch (Exception e) {
+										new CustomToast(getApplicationContext(), "Error " + e.getMessage()).showToast();
+										Log.i("Exception Main Map", "***" + e.getMessage());
+									}
+									
+								}
+								
+						}).execute("1003", DriverApp.getInstance().getDriverInfo().getTaxiId(), "1");
+					}
+					
+				} else {
+					new CustomToast(getApplicationContext(), ConstantValues.internetConnectionMsg).showToast();
+				}
+				break;
+
+			case 2:// when accepted
+				if (InternetConnectivity.isConnectedToInternet(MainMapActivity.this)) {
+					countDownTimer.cancel();
+					linearTimerInfo.setVisibility(View.INVISIBLE);
+					handler.removeCallbacks(runner);
+
+					new BookingRejectAsyncTask(MainMapActivity.this, new OnRequestComplete() {
+							@Override
+							public void onRequestComplete(String result) {
+								
+								try {
+									if ("2001".equals(result)) {
+										stage = 3;
+										// countDownTimer.cancel();
+										// currentPositionMarker.setVisible(false);
+										isAccepted = true;
+										makeUnavailable();
+										linearTimerInfo.setVisibility(View.INVISIBLE);
+										btnLeft.setBackgroundResource(R.drawable.cancel_btn);
+										btnright.setBackgroundResource(R.drawable.tap_arriving_btn);
+										final LatLng cur_Latlng = new LatLng(new GPSTracker(MainMapActivity.this).getLatitude(), new GPSTracker(MainMapActivity.this).getLongitude());
+										
+										final LatLng pickUpLatLon = new LatLng(DriverApp.getInstance().getBookingInfo().getPickupLat(), DriverApp.getInstance().getBookingInfo().getPickupLon());
+										new GetRouteTask(cur_Latlng,pickUpLatLon).execute();
+
+									} else {
+										new CustomToast(MainMapActivity.this, ConstantValues.bookingErrorMessage).showToast();
+										resetView();
+									}	
+								} catch (Exception e) {
+									new CustomToast(getApplicationContext(), "Error " + e.getMessage()).showToast();
+									Log.i("Exception Main Map", "***" + e.getMessage());
+								}
+								
+								
+							}
+
+					}).execute("1005", DriverApp.getInstance().getDriverInfo().getTaxiId(), DriverApp.getInstance().getBookingInfo().getBookingId(),DriverApp.getInstance().getProfileInfo().getId(), "1");
+				
+				} else {
+					new CustomToast(getApplicationContext(), ConstantValues.internetConnectionMsg).showToast();
+				}
+				break;
+
+			case 3:
+				showDeclinePopup();
+				break;
+
+			default:
+				break;
+			}
+			break;
+
+		case R.id.btn_unavailable:
+			
+			switch (stage) {
+			case 1:
+				if (InternetConnectivity.isConnectedToInternet(MainMapActivity.this)) {
+					if (buttonTag != 1) {
+						new CheckAvailabilityAsyncTask(MainMapActivity.this, true, new OnRequestComplete() {
+								@Override
+								public void onRequestComplete(String result) {
+									try {
+										if ("2001".equals(result)) {
+											buttonTag = 1;
+											btnLeft.setBackgroundResource(R.drawable.available_inactive);
+											btnright.setBackgroundResource(R.drawable.un_available_active);
+											handler.removeCallbacks(runner);
+											
+										} else {
+											new CustomToast(getApplicationContext(), "Data not found").showToast();
+										}	
+									} catch (Exception e) {
+										new CustomToast(getApplicationContext(), "Error " + e.getMessage()).showToast();
+										Log.i("Exception Main Map", "***" + e.getMessage());
+									}
+									
+								}
+								
+						}).execute("1003", DriverApp.getInstance().getDriverInfo().getTaxiId(), "0");
+					
+					}
+					
+				} else {
+					new CustomToast(getApplicationContext(), ConstantValues.internetConnectionMsg).showToast();
+				}
+				
+				break;
+
+			case 2:
+				if (InternetConnectivity.isConnectedToInternet(MainMapActivity.this)) {
+					new BookingRejectAsyncTask(MainMapActivity.this,
+							new OnRequestComplete() {
+								@Override
+								public void onRequestComplete(String result) {
+									
+									try {
+										if ("2001".equals(result)) {
+											isAccepted = false;
+											makeAvailable();
+											resetView();
+											// finish();
+										}	
+									} catch (Exception e) {
+										new CustomToast(getApplicationContext(), "Error " + e.getMessage()).showToast();
+										Log.i("Exception Main Map", "***" + e.getMessage());
+									}
+									
+								}
+							}).execute("1005", DriverApp.getInstance().getDriverInfo().getTaxiId(), DriverApp.getInstance().getBookingInfo().getBookingId(), DriverApp.getInstance().getProfileInfo().getId(), "0");
+				} else {
+					new CustomToast(getApplicationContext(), ConstantValues.internetConnectionMsg).showToast();
+				}
+				break;
+
+			case 3: // when tap to arriving
+				if (InternetConnectivity.isConnectedToInternet(MainMapActivity.this)) {
+					new TaxiArrivingAsyncTask(MainMapActivity.this, new OnRequestComplete() {
+							@Override
+							public void onRequestComplete(String result) {
+								if ("2001".equals(result)) {
+									isLock = true;
+									startActivity(new Intent(MainMapActivity.this, StartOrEndTripActivity.class).putExtra("is_hailed", false));
+									finish();
+								}
+							}
+								
+					}).execute("1007", DriverApp.getInstance().getDriverInfo().getTaxiId(), DriverApp.getInstance().getBookingInfo().getBookingId());
+				
+				} else {
+					new CustomToast(getApplicationContext(), ConstantValues.internetConnectionMsg).showToast();
+				}
+				break;
+
+			default:
+				break;
+			}
+			
+			break;
+
+		default:
+			break;
+		}
+	}
+	
+	protected void makeUnavailable() {
+		if(InternetConnectivity.isConnectedToInternet(MainMapActivity.this)) {
+			new CheckAvailabilityAsyncTask(MainMapActivity.this, false, new OnRequestComplete() {
+				@Override
+				public void onRequestComplete(String result) {
+					
+					try {
+						if("2001".equals(result)) {
+							Log.i("Available check", "Gone to unavailable");
+							//new CustomToast(getApplicationContext(), "Gone to unavailable").showToast();
+							
+							if (!isAccepted) {
+								buttonTag = 1;
+								//ConstantValues.isLock = true;
+								btnLeft.setBackgroundResource(R.drawable.available_inactive);
+								btnright.setBackgroundResource(R.drawable.un_available_active);
+								
+								handler.removeCallbacks(runner);
+							}
+							
+						} else {
+							new CustomToast(getApplicationContext(), "Data not found").showToast();
+						}
+					} catch (Exception e) {
+						new CustomToast(getApplicationContext(), "Error " + e.getMessage()).showToast();
+						Log.i("Exception Main Map", "***" + e.getMessage());
+					}
+					
+				}
+			}).execute("1003", DriverApp.getInstance().getDriverInfo().getTaxiId(), "0");
+		} else {
+			new CustomToast(getApplicationContext(), ConstantValues.internetConnectionMsg).showToast();
+		}
+	}
+
+	private void showTimer(final int min, final int sec) {
+		final long totalTime = (min * 60000)/2 + sec * 1000;
+		
+		countDownTimer = new CountDownTimer(totalTime, 1000) {
+			int barChangeInterval = (int) ((totalTime / 1000) / linearLayoutTimer.getChildCount());
+			int imgViewIndex = 0;
+			int timeSecond = 1;
+			
+			@Override
+			public void onTick(long millisUntilFinished) {
+				int s = (int) (millisUntilFinished / 1000) % 60;
+				int m = (int) (millisUntilFinished / 60000) % 60;
+				
+				if(imgViewIndex < linearLayoutTimer.getChildCount()) {
+					if(timeSecond % barChangeInterval == 0) {
+						linearLayoutTimer.getChildAt(imgViewIndex).setBackgroundResource(R.drawable.time_bar_b);
+						imgViewIndex++;
+					}
+				}
+				
+				timeSecond++;
+				
+				minute = (m < 10) ? "0"+m : ""+m;
+				second = (s < 10) ? "0"+s : ""+s;
+			}
+
+			@Override
+			public void onFinish() {
+				//txtViewTimer.setText("00:00");
+				//linearLayoutTimer.getChildAt(linearLayoutTimer.getChildCount()-1).setBackgroundResource(R.drawable.time_bar_b);
+				if(InternetConnectivity.isConnectedToInternet(MainMapActivity.this)) {		
+					new BookingRejectAsyncTask(MainMapActivity.this, new OnRequestComplete() {
+						
+						@Override
+						public void onRequestComplete(String result) {
+							
+							try {
+								
+								if("2001".equals(result)) {
+									resetView();
+									//finish();
+								}
+							} catch (Exception e) {
+								new CustomToast(getApplicationContext(), "Error " + e.getMessage()).showToast();
+								Log.i("Exception 1012", "***" + e.getMessage());
+							}
+							
+						}
+						
+					}).execute("1005", DriverApp.getInstance().getDriverInfo().getTaxiId(), DriverApp.getInstance().getBookingInfo().getBookingId(), DriverApp.getInstance().getProfileInfo().getId(), "0");
+				
+				} else {
+					new CustomToast(getApplicationContext(), ConstantValues.internetConnectionMsg).showToast();
+				}
+			}
+		};
+		
+		countDownTimer.start();
+		
+	}
+	
+	@Override
+	public void onDestroy() {
+		super.onDestroy();
+		DriverApp.getInstance().setLock(false);
+		handler.removeCallbacks(runner);
+	}
+	
+	private void showDeclinePopup() {
+		dialogDecline = new DialogController(MainMapActivity.this).declineDialog();
+		
+		final CheckBox checkBox1, checkBox2, checkBox3, checkBox4;
+		checkBox1 = (CheckBox) dialogDecline.findViewById(R.id.checkBox1);
+		checkBox2 = (CheckBox) dialogDecline.findViewById(R.id.checkBox2);
+		checkBox3 = (CheckBox) dialogDecline.findViewById(R.id.checkBox3);
+		checkBox4 = (CheckBox) dialogDecline.findViewById(R.id.checkBox4);
+		
+		Button btnExit = (Button) dialogDecline.findViewById(R.id.btn_exit);
+		
+		Button btnOk = (Button) dialogDecline.findViewById(R.id.btn_ok);
+		btnOk.setOnClickListener(new OnClickListener() {
+			
+			@Override
+			public void onClick(View v) {
+		
+				if(InternetConnectivity.isConnectedToInternet(MainMapActivity.this)) {
+					
+				} else {
+					new CustomToast(getApplicationContext(), ConstantValues.internetConnectionMsg).showToast();
+					dialogDecline.dismiss();
+					return;
+				}
+				
+				if (!checkBox1.isChecked() && !checkBox2.isChecked() && !checkBox3.isChecked() && !checkBox4.isChecked()) {
+					Toast.makeText(MainMapActivity.this, "Please select any one", Toast.LENGTH_LONG).show();
+					return;
+				}
+				
+				StringBuffer result = new StringBuffer();
+				
+				if (checkBox1.isChecked()) {
+					result.append(checkBox1.getText()).append(",");
+				}
+				
+				if (checkBox2.isChecked()) {
+					result.append(checkBox2.getText()).append(",");
+				}
+				
+				if (checkBox3.isChecked()) {
+					result.append(checkBox3.getText()).append(",");
+				}
+				
+				if (checkBox4.isChecked()) {
+					result.append(checkBox4.getText()).append(",");
+				}
+				
+				result.append("\nWindows Mobile check :").append(checkBox3.isChecked());
+				
+				Toast.makeText(MainMapActivity.this, result.toString().substring(0, result.toString().length()-1), Toast.LENGTH_LONG).show();
+				
+				new BookingCancelAsyncTask(MainMapActivity.this, new OnRequestComplete() {
+					
+					@Override
+					public void onRequestComplete(String result) {
+						try {
+							if("2001".equals(result)) {
+								//finish();
+								//dialogDecline.dismiss();
+								resetView();
+							}
+						} catch (Exception e) {
+							new CustomToast(getApplicationContext(), "Error " + e.getMessage()).showToast();
+							Log.i("Exception 1013", "***" + e.getMessage());
+						}
+						
+					}
+				}).execute("1006", DriverApp.getInstance().getDriverInfo().getTaxiId(), DriverApp.getInstance().getBookingInfo().getBookingId(), result.toString().substring(0, result.toString().length()-1));
+				
+				
+			}
+		});
+		
+		btnExit.setOnClickListener(new OnClickListener() {
+			@Override
+			public void onClick(View v) {
+				dialogDecline.dismiss();
+			}
+		});
+		
+		dialogDecline.show();
+	}
+	
+	
+	private void resetView() {
+		countDownTimer.cancel();
+		
+		handler.removeCallbacks(runner);
+		isShown = false;
+		//finish();
+		Intent intent = getIntent();
+	    overridePendingTransition(0, 0);
+	    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+	    intent.addFlags(Intent.FLAG_ACTIVITY_NO_ANIMATION);
+	    
+	    overridePendingTransition(0, 0);
+	    isLock = true;
+	    startActivity(intent);
+	    finish();
+	}
+	
+	private class GetRouteTask extends AsyncTask<String, Void, String> {
+
+		private ProgressDialog Dialog;
+		String response = "";
+		boolean isProgress = false;
+
+		LatLng pickUpPosition, DestinationPostion;
+
+		public GetRouteTask(LatLng pickUpPosition, LatLng DestinationPostion) {
+			this.pickUpPosition = pickUpPosition;
+			this.DestinationPostion = DestinationPostion;
+		}
+
+		@Override
+		protected void onPreExecute() {
+			Dialog = new ProgressDialog(MainMapActivity.this);
+			Dialog.setMessage("Loading...");
+			Dialog.setCancelable(false);
+			if(isProgress){
+				Dialog.show();
+			}
+			
+		}
+
+		@Override
+		protected String doInBackground(String... urls) {
+			// Get All Route values
+			try {
+				doc = routeDirection.getDocument(pickUpPosition, DestinationPostion, GMapV2GetRouteDirection.MODE_DRIVING, "");
+				response = "Success";
+				
+			} catch (Exception e) {
+				response = "Error";
+			}
+			
+			return response;
+
+		}
+
+		@Override
+		protected void onPostExecute(String result) {
+			
+			try {
+				if (response.equalsIgnoreCase("Success")) {
+					
+					if (Dialog.isShowing()) {
+						Dialog.dismiss();
+						
+					} else{
+						
+					}
+					
+					ArrayList<LatLng> directionPoint = routeDirection.getDirection(doc);
+					if( directionPoint != null ) {
+						if(isFirstTime) {
+							LatLngBounds bounds = Utils.centerIncidentRouteOnMap(directionPoint);
+							map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 120));
+							isFirstTime = false;
+						} 
+						rectLine = new PolylineOptions().width(10).color(Color.RED);
+						for (int i = 0; i < directionPoint.size(); i++) {
+							rectLine.add(directionPoint.get(i));
+						}
+						// Adding route on the map
+						Polyline newline = map.addPolyline(rectLine);
+						if (line!= null) {
+							line.remove();
+						}
+						line = newline;
+					}
+					
+				} else {
+					new CustomToast(getApplicationContext(), "Path not found").showToast();
+				}
+			} catch (Exception e) {
+				new CustomToast(getApplicationContext(), "Error " + e.getMessage()).showToast();
+				Log.i("Exception 1014", "***" + e.getMessage());
+			}
+			
+		}
+	}
+	@Override
+	public void onBackPressed() {
+		ConstantValues.isBack = false;
+		isLock = true;
+		if (stage == 3 || stage == 2) {
+			
+		} else {
+			super.onBackPressed();
+		}
+	}
+	
+	@Override
+	protected void onPause() {
+		ConstantValues.isBackground = true;
+		if (isLock) {
+			isLock = false;
+		} else {
+			isLock = true;
+			//Make unavailable
+			/*if(InternetConnectivity.isConnectedToInternet(MainMapActivity.this)) {
+				new CheckAvailabilityAsyncTask(MainMapActivity.this, false, new OnRequestComplete() {
+					@Override
+					public void onRequestComplete(String result) {
+						
+						try {
+							if("2001".equals(result)) {
+								Log.i("Available check", "Gone to unavailable");
+								buttonTag = 1;
+								btnLeft.setBackgroundResource(R.drawable.available_inactive);
+								btnright.setBackgroundResource(R.drawable.un_available_active);
+								handler.removeCallbacks(runner);
+								
+							} else {
+								new CustomToast(getApplicationContext(), "Data not found").showToast();
+							}
+							
+						} catch (Exception e) {
+							new CustomToast(getApplicationContext(), "Error " + e.getMessage()).showToast();
+							Log.i("Exception 1015", "***" + e.getMessage());
+						}
+						
+						
+					}
+				}).execute("1003", DriverApp.getInstance().getDriverInfo().getTaxiId(), "0");
+				
+				*/
+			if(isAccepted || linearTimerInfo.getVisibility()== View.VISIBLE){
+				
+			} else {
+				makeUnavailable();
+			}
+				
+		}
+			
+		super.onPause();
+	}
+	
+	@Override
+	protected void onResume() {
+		ConstantValues.isBackground = false;
+		if (isLock) {
+			isLock = false;
+			
+			if(isAccepted || linearTimerInfo.getVisibility() == View.VISIBLE) {
+				
+			} else {
+				makeAvailable();
+			}
+		} else {
+			
+		}
+		
+		super.onResume();
+	}
+	
+	
+	private void makeAvailable() {
+		if(InternetConnectivity.isConnectedToInternet(MainMapActivity.this)) {
+			new CheckAvailabilityAsyncTask(MainMapActivity.this, false, new OnRequestComplete() {
+				
+				@Override
+				public void onRequestComplete(String result) {
+					if("2001".equals(result)) {
+						//new CustomToast(getApplicationContext(), "Came to available").showToast();
+						buttonTag = 0;
+						btnLeft.setBackgroundResource(R.drawable.available_active);
+						btnright.setBackgroundResource(R.drawable.un_available_inactive);
+						handler.postDelayed(runner, 5000);
+						Log.i("Available check", "Came to available");
+					} else {
+						new CustomToast(getApplicationContext(), "Data not found").showToast();
+					}
+				}
+			}).execute("1003", DriverApp.getInstance().getDriverInfo().getTaxiId(), "1");
+			
+		} else {
+			new CustomToast(getApplicationContext(), ConstantValues.internetConnectionMsg).showToast();
+		}
+		
+	}
+
+	public void animateMarker(final Marker marker, final LatLng toPosition, final boolean hideMarker) {
+	     final Handler handler = new Handler();
+	     final long start = SystemClock.uptimeMillis();
+	     com.google.android.gms.maps.Projection proj = map.getProjection();
+	     Point startPoint = proj.toScreenLocation(marker.getPosition());
+	     final LatLng startLatLng = proj.fromScreenLocation(startPoint);
+	     final long duration = 500;
+	     final Interpolator interpolator = new LinearInterpolator();
+	
+	     handler.post(new Runnable() {
+	      long elapsed;
+	      float t;
+	      float v;
+	         @Override
+	         public void run() {
+	             elapsed = SystemClock.uptimeMillis() - start;
+	             t = interpolator.getInterpolation((float) elapsed/ duration);
+	             v = interpolator.getInterpolation(t);
+	             double lng = t * toPosition.longitude + (1 - t) * startLatLng.longitude;
+	             double lat = t * toPosition.latitude + (1 - t) * startLatLng.latitude;
+	             marker.setPosition(new LatLng(lat, lng));
+	             //marker.setPosition();
+	             if (t < 1.0) {
+	         // Post again 16ms later.
+	                 handler.postDelayed(this, 2);
+	             } else {
+	                 if (hideMarker) {
+	                     marker.setVisible(false);
+	                 } else {
+	                     marker.setVisible(true);
+	                 }
+	             }
+	         }
+	     });
+	     
+	}
+
+	@Override
+	public void onMyLocationChange(Location location) {
+		  double latitude = location.getLatitude();
+		  
+	        // Getting longitude of the current location
+	        double longitude = location.getLongitude();
+	 
+	        // Creating a LatLng object for the current location
+	        LatLng curenLatLng = new LatLng(latitude, longitude);
+	 
+	        // Showing the current location in Google Map
+	       // map.moveCamera(CameraUpdateFactory.newLatLng(curenLatLng));
+	 
+	        // Zoom in the Google Map
+	      
+	       map.animateCamera(CameraUpdateFactory.zoomTo(map.getCameraPosition().zoom));
+	        
+	        animateMarker(currentPositionMarker , curenLatLng, false);
+	        if(pick_up_latLng != null) {
+	        	if(InternetConnectivity.isConnectedToInternet(MainMapActivity.this)) {
+	        		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+	        			if(isAccepted) {
+	        				new GetRouteTask(curenLatLng, pick_up_latLng).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+	        			}
+							
+						new GetDurationAsyncTask(MainMapActivity.this, curenLatLng, pick_up_latLng,  new OnRequestComplete() {
+							@Override
+							public void onRequestComplete(String result) {
+								try {
+									Log.e("Duration is:", "::::"+result);
+									String [] distanceDuration = result.split("//");
+									//linearInfo.setVisibility(View.VISIBLE);
+									txtViewTimerCount.setText(Utils.getFormatedDuration(distanceDuration[1])+" away");
+								} catch (Exception e) {
+									new CustomToast(getApplicationContext(), "Error " + e.getMessage()).showToast();
+									Log.i("Exception 1017", "***" + e.getMessage());
+								}
+								
+								//DriverApp.getInstance().getBookingInfo().setDuration(Utils.getFormatedDuration(distanceDuration[1]));
+								//DriverApp.getInstance().getBookingInfo().setDistance(Utils.getFormatedDistance(distanceDuration[0]));
+							}
+						}).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+	        		
+	        		} else {
+	        			if(isAccepted) {
+	        				new GetRouteTask(curenLatLng, pick_up_latLng).execute();	
+	        			}
+	        			
+	        			new GetDurationAsyncTask(MainMapActivity.this, curenLatLng, pick_up_latLng,  new OnRequestComplete() {
+							@Override
+							public void onRequestComplete(String result) {
+								try {
+									Log.e("Duration is:", "::::"+result);
+									String [] distanceDuration = result.split("//");
+									//linearInfo.setVisibility(View.VISIBLE);
+									txtViewTimerCount.setText(Utils.getFormatedDuration(distanceDuration[1])+" away");
+								} catch (Exception e) {
+									new CustomToast(getApplicationContext(), "Error " + e.getMessage()).showToast();
+									Log.i("Exception 1018", "***" + e.getMessage());
+								}
+								//DriverApp.getInstance().getBookingInfo().setDuration(Utils.getFormatedDuration(distanceDuration[1]));
+								//DriverApp.getInstance().getBookingInfo().setDistance(Utils.getFormatedDistance(distanceDuration[0]));
+							}
+						}).execute();
+	        		}
+	        	} else {
+					new CustomToast(getApplicationContext(), ConstantValues.internetConnectionMsg).showToast();
+				}
+	        }
+		
+	}
+	
+}

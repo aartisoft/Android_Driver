@@ -1,0 +1,70 @@
+package com.netcabs.asynctask;
+
+import android.app.Activity;
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.os.AsyncTask;
+
+import com.netcabs.interfacecallback.OnRequestComplete;
+import com.netcabs.jsonparser.CommunicationLayer;
+
+public class HailedAddAsyncTask extends AsyncTask<String, Void, Void> {
+
+	private Context context;
+	private ProgressDialog progressDialog;
+	private OnRequestComplete callback;
+	private String responseStatus;
+
+	public HailedAddAsyncTask(Context context, OnRequestComplete callback2) {
+		this.context = context;
+		this.callback = (OnRequestComplete) callback2;
+	}
+
+	@Override
+	protected void onPreExecute() {
+		super.onPreExecute();
+		progressDialog = ProgressDialog.show(context, "", "Loading...", true, false);
+	}
+
+	@Override
+	protected Void doInBackground(String... params) {
+		String func_id = params[0];
+		String taxi_id = params[1];
+		String driver_id = params[2];
+		String rego_no = params[3];
+		String src_lat = params[4];
+		String src_long = params[5];
+		String pickup_address = params[6];
+		String destination_lat = params[7];
+		String destination_long = params[8];
+		String destination_address = params[9];
+		String booking_date = params[10];
+		String booking_time = params[11];
+	
+		
+		try {
+			responseStatus = CommunicationLayer.getHailedAddData(func_id, taxi_id, driver_id, rego_no, src_lat, src_long, pickup_address, destination_lat, destination_long, destination_address, booking_date, booking_time);
+			} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
+
+	@Override
+	protected void onPostExecute(Void result) {
+		super.onPostExecute(result);
+		try {
+			if ((progressDialog != null) && progressDialog.isShowing()) {
+				progressDialog.dismiss();
+			}
+		} catch (final IllegalArgumentException e) {
+		} catch (final Exception e) {
+		} finally {
+			progressDialog = null;
+		}
+		
+		callback.onRequestComplete(responseStatus);
+	}
+
+}

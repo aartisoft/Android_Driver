@@ -1,0 +1,361 @@
+package com.netcabs.driver;
+
+import java.text.ParseException;
+import java.util.ArrayList;
+
+import org.w3c.dom.Document;
+
+import android.app.Activity;
+import android.app.ProgressDialog;
+import android.graphics.Color;
+import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
+import com.netcabs.asynctask.CheckAvailabilityAsyncTask;
+import com.netcabs.customviews.CustomToast;
+import com.netcabs.datamodel.JourneyReportInfo;
+import com.netcabs.interfacecallback.OnRequestComplete;
+import com.netcabs.internetconnection.InternetConnectivity;
+import com.netcabs.utils.ConstantValues;
+import com.netcabs.utils.DriverApp;
+import com.netcabs.utils.GMapV2GetRouteDirection;
+import com.netcabs.utils.Utils;
+
+public class PastTripDetailsActivity extends Activity implements OnClickListener {
+
+	private GoogleMap map;
+	private int position = 0;
+	private TextView txtViewpassengerName;
+	private TextView txtViewLocationName;
+	private TextView txtViewDate;
+	private TextView txtViewFare;
+	private TextView txtViewDistance;
+	private TextView txtViewPayment;
+	
+	private GMapV2GetRouteDirection routeDirection;
+	private Document doc;
+	private PolylineOptions rectLine;
+	private Polyline line;
+	public boolean isLock = false;
+	private ArrayList<LatLng> journeyDirectionList;
+	private String wayPoints = "";
+			
+	
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+		setContentView(R.layout.activity_fast_trip_details);
+		
+		if (!DriverApp.getInstance().isLock()) {
+			DriverApp.getInstance().setLock(false);
+		}
+		
+		initViews();
+		setListener();
+		initGoogleMap();
+		loadData();
+	}
+
+	private void initViews() {
+		routeDirection = new GMapV2GetRouteDirection();
+		txtViewpassengerName = (TextView) findViewById(R.id.txt_view_name);
+		txtViewLocationName = (TextView) findViewById(R.id.txt_view_location_name);
+		txtViewDate = (TextView) findViewById(R.id.txt_view_date);
+		txtViewFare = (TextView) findViewById(R.id.txt_view_fare);
+		txtViewDistance = (TextView) findViewById(R.id.txt_view_distance);
+		txtViewPayment = (TextView) findViewById(R.id.txt_view_payment);
+		
+	}
+	
+	private void setListener() {
+		((Button) findViewById(R.id.btn_back)).setOnClickListener(this);
+	}
+
+	private void initGoogleMap() {
+		map = ((MapFragment) getFragmentManager().findFragmentById(R.id.map)).getMap();
+	}
+	
+	private void loadData() {
+		if(getIntent().getExtras() != null) {
+			position = getIntent().getExtras().getInt("position");
+		}
+		if(DriverApp.getInstance().getFastTripsInfoList().get(position).getJourneyReportInfo() != null) {
+			journeyDirectionList = new ArrayList<LatLng>();
+			for (int i = 0; i < DriverApp.getInstance().getFastTripsInfoList().get(position).getJourneyReportInfo().size(); i++) {
+				journeyDirectionList.add(new LatLng(DriverApp.getInstance().getFastTripsInfoList().get(position).getJourneyReportInfo().get(i).getJourneyLatitude(), DriverApp.getInstance().getFastTripsInfoList().get(position).getJourneyReportInfo().get(i).getJourneyLongitude()));
+				wayPoints = wayPoints+"|"+DriverApp.getInstance().getFastTripsInfoList().get(position).getJourneyReportInfo().get(i).getJourneyLatitude()+","+DriverApp.getInstance().getFastTripsInfoList().get(position).getJourneyReportInfo().get(i).getJourneyLongitude()+"|";
+				Circle circle = map.addCircle(new CircleOptions()
+				.center(new LatLng(DriverApp.getInstance().getFastTripsInfoList().get(position).getJourneyReportInfo().get(i).getJourneyLatitude(),
+						DriverApp.getInstance().getFastTripsInfoList().get(position).getJourneyReportInfo().get(i).getJourneyLongitude())).radius(2.5)
+						.strokeColor(Color.RED).fillColor(Color.GREEN));
+			}
+		}
+/*		//dummy
+		double lat = 23.2589;
+		double lon = 94.2356;
+		journeyDirectionList = new ArrayList<LatLng>();
+		for (int i = 0; i < 30; i++) {
+			journeyDirectionList.add(new LatLng(lat,lon));
+			lat = lat + 0.05;
+			lon = lon + 0.05;
+		}
+		//
+*/			
+		txtViewpassengerName.setText(DriverApp.getInstance().getFastTripsInfoList().get(position).getName());
+		txtViewLocationName.setText(DriverApp.getInstance().getFastTripsInfoList().get(position).getDestinationName());
+		txtViewDate.setText(DriverApp.getInstance().getFastTripsInfoList().get(position).getDate());
+		try {
+			txtViewDate.setText(Utils.formatedDate(DriverApp.getInstance().getFastTripsInfoList().get(position).getDate()));
+		} catch (ParseException e) {
+			txtViewDate.setText(DriverApp.getInstance().getFastTripsInfoList().get(position).getDate());
+			e.printStackTrace();
+		}
+		txtViewFare.setText("$ "+String.format("%.2f", Double.parseDouble(DriverApp.getInstance().getFastTripsInfoList().get(position).getFare())));
+		txtViewDistance.setText(DriverApp.getInstance().getFastTripsInfoList().get(position).getDistance()+"");
+		txtViewPayment.setText(DriverApp.getInstance().getFastTripsInfoList().get(position).getPaymentType());
+		
+		LatLng pickUpLatLon = new LatLng(DriverApp.getInstance().getFastTripsInfoList().get(position).getPickupLat(), DriverApp.getInstance().getFastTripsInfoList().get(position).getPickupLong());
+		String pickUpLocationName = DriverApp.getInstance().getFastTripsInfoList().get(position).getPickupName();
+		
+		LatLng destinationLatLon = new LatLng(DriverApp.getInstance().getFastTripsInfoList().get(position).getDestinationLat(), DriverApp.getInstance().getFastTripsInfoList().get(position).getDestinationLong());
+		String destinationLocationName = DriverApp.getInstance().getFastTripsInfoList().get(position).getDestinationName();
+		
+		Marker pickUpMarker = map.addMarker(new MarkerOptions()
+				.title("PickUp Point")
+				.position(pickUpLatLon)
+				.icon(BitmapDescriptorFactory.fromResource(R.drawable.pickup_add_icon))
+				.snippet(pickUpLocationName));
+		
+		Marker destinationMarker = map.addMarker(new MarkerOptions()
+				.title("Destination Point")
+				.position(destinationLatLon)
+				.icon(BitmapDescriptorFactory.fromResource(R.drawable.car_location_icon))
+				.snippet(destinationLocationName));
+		
+		if (map != null) {
+			CameraPosition cameraPosition = new CameraPosition.Builder()
+					.target(pickUpLatLon).zoom(14) // Sets the zoom
+					.tilt(0) // Sets the tilt of the camera to 30 degrees
+					.build(); // Creates a CameraPosition from the builder
+		
+			map.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+			if(journeyDirectionList != null) {
+//				drawTaxiPath(journeyDirectionList);
+//				Toast.makeText(PastTripDetailsActivity.this, "Actual Path is drawn", Toast.LENGTH_LONG).show();
+			} else {
+				//Toast.makeText(PastTripDetailsActivity.this, "Shortest path is drawn", Toast.LENGTH_LONG).show();
+				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+					new GetRouteTask(pickUpLatLon, destinationLatLon, true).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+				 } else {
+					new GetRouteTask(pickUpLatLon, destinationLatLon, true).execute();
+				 }
+			}
+		} else {
+			Log.i("Map is null", "_________________");
+		}
+		
+	}
+	private void drawTaxiPath(ArrayList<LatLng> taxiPathArray) {
+		LatLngBounds bounds = Utils.centerIncidentRouteOnMap(taxiPathArray);
+		rectLine = new PolylineOptions().width(5).color(Color.RED);
+		for (int i = 0; i < taxiPathArray.size(); i++) {
+			rectLine.add(taxiPathArray.get(i));
+		}
+		map.addPolyline(rectLine);
+	}
+	
+	private class GetRouteTask extends AsyncTask<String, Void, String> {
+
+		private ProgressDialog Dialog;
+		String response = "";
+		boolean isProgress = false;
+
+		LatLng pickUpPosition, DestinationPostion;
+
+		public GetRouteTask(LatLng pickUpPosition, LatLng DestinationPostion, boolean isProgressOn) {
+			this.pickUpPosition = pickUpPosition;
+			this.isProgress = isProgressOn;
+			this.DestinationPostion = DestinationPostion;
+		}
+
+		@Override
+		protected void onPreExecute() {
+			try {
+				Dialog = new ProgressDialog(PastTripDetailsActivity.this);
+				Dialog.setMessage("Loading...");
+				Dialog.setCancelable(false);
+				if(isProgress){
+					Dialog.show();
+				}
+			} catch (Exception e) {
+				new CustomToast(PastTripDetailsActivity.this, "" + e.getMessage()).showToast();
+			}
+			
+		}
+
+		@Override
+		protected String doInBackground(String... urls) {
+			// Get All Route values
+			try {
+				doc = routeDirection.getDocument(pickUpPosition, DestinationPostion, GMapV2GetRouteDirection.MODE_DRIVING, wayPoints);
+				response = "Success";
+			} catch (Exception e) {
+				response = "Error";
+			}
+			
+			return response;
+
+		}
+
+		@Override
+		protected void onPostExecute(String result) {
+			try {
+				if (response.equalsIgnoreCase("Success")) {
+					
+					if (line!= null) {
+						line.remove();
+					}
+					if (Dialog.isShowing()) {
+						Dialog.dismiss();
+						
+					} else{
+						
+					}
+					
+					ArrayList<LatLng> directionPoint = routeDirection.getDirection(doc);
+					if(directionPoint != null) {
+						LatLngBounds bounds = Utils.centerIncidentRouteOnMap(directionPoint);
+						map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 120));
+						
+						rectLine = new PolylineOptions().width(10).color(Color.RED);
+						Log.e("direction size is", "---"+doc);
+						for (int i = 0; i < directionPoint.size(); i++) {
+							rectLine.add(directionPoint.get(i));
+						}
+						// Adding route on the map
+						line = map.addPolyline(rectLine);
+						
+					}
+				} else {
+					new CustomToast(PastTripDetailsActivity.this, "Path not found").showToast();
+				}
+				
+			} catch (Exception e) {
+				new CustomToast(PastTripDetailsActivity.this, "" + e.getMessage()).showToast();
+				Log.e("Error 1020", "---" + e.getMessage());
+			}
+			
+		}
+	}
+
+	@Override
+	public void onClick(View v) {
+		switch (v.getId()) {
+		case R.id.btn_back:
+			onBackPressed();
+			break;
+
+		default:
+			break;
+		}
+	}
+	
+	@Override
+	public void onBackPressed() {
+		isLock = true;
+		super.onBackPressed();
+	}
+	
+	@Override
+	protected void onResume() {
+		
+		if (isLock) {
+			isLock = false;
+			//Make available
+			if(InternetConnectivity.isConnectedToInternet(PastTripDetailsActivity.this)) {
+				new CheckAvailabilityAsyncTask(PastTripDetailsActivity.this, false, new OnRequestComplete() {
+					
+					@Override
+					public void onRequestComplete(String result) {
+						
+						try {
+							if("2001".equals(result)) {
+								//new CustomToast(PastTripDetailsActivity.this, "Came to available").showToast();
+						
+							} else {
+								//new CustomToast(PastTripDetailsActivity.this, "Data not found").showToast();
+							}
+						} catch (Exception e) {
+							new CustomToast(PastTripDetailsActivity.this, "" + e.getMessage()).showToast();
+							Log.e("Error 1021", "---" + e.getMessage());
+						}
+						
+					}
+				}).execute("1003", DriverApp.getInstance().getDriverInfo().getTaxiId(), "1");
+				
+			} else {
+				new CustomToast(PastTripDetailsActivity.this, ConstantValues.internetConnectionMsg).showToast();
+			}
+		} else {
+			
+		}
+		super.onResume();
+	}
+	
+	@Override
+	protected void onPause() {
+		if (isLock) {
+			isLock = false;
+		} else {
+			isLock = true;
+			//Make unavailable
+			if(InternetConnectivity.isConnectedToInternet(PastTripDetailsActivity.this)) {
+				new CheckAvailabilityAsyncTask(PastTripDetailsActivity.this, false, new OnRequestComplete() {
+					@Override
+					public void onRequestComplete(String result) {
+						
+						try {
+							if("2001".equals(result)) {
+								Log.i("Available check", "Gone to unavailable");
+								//new CustomToast(PastTripDetailsActivity.this, "Gone to unavailable").showToast();
+							
+							} else {
+								//new CustomToast(PastTripDetailsActivity.this, "Data not found").showToast();
+							}
+						} catch (Exception e) {
+							new CustomToast(PastTripDetailsActivity.this, "" + e.getMessage()).showToast();
+							Log.e("Error 1022", "---" + e.getMessage());
+						}
+						
+					}
+				}).execute("1003", DriverApp.getInstance().getDriverInfo().getTaxiId(), "0");
+			} else {
+				//new CustomToast(PastTripDetailsActivity.this, ConstantValues.internetConnectionMsg).showToast();
+			}
+		}
+		super.onPause();
+	}
+
+}

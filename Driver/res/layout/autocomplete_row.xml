@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:customviews="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/relative_main"
+    android:layout_width="fill_parent"
+    android:layout_height="fill_parent"
+    android:background="#ffffff"
+    android:padding="2dp" >
+
+    <ImageView
+        android:id="@+id/img_view_suggestion_icon"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_marginLeft="5dip"
+        android:layout_marginTop="5dip"
+        android:src="@drawable/list_icon" />
+
+    <ImageView
+        android:id="@+id/img_view_list_line"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/txt_view_suggestion"
+        android:layout_marginLeft="10dp"
+        android:layout_marginRight="10dp"
+        android:layout_toRightOf="@+id/img_view_suggestion_icon"
+        android:src="@drawable/list_line" />
+
+    <com.netcabs.customviews.NetCabsTextView
+        android:id="@+id/txt_view_suggestion"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_marginLeft="23dp"
+        android:layout_toRightOf="@+id/img_view_suggestion_icon"
+        android:ellipsize="end"
+        android:maxLines="2"
+        android:minLines="2"
+        android:text="Item name here..."
+        android:textColor="@color/black_color"
+        android:textSize="@dimen/past_trips_text_size"
+        customviews:fontName="HELSH__.TTF" />
+
+</RelativeLayout>
